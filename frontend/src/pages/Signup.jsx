@@ -3,7 +3,7 @@ import { AuthContext } from "../context/AuthContext";
 
 const Signup = () => {
   const { signup } = useContext(AuthContext);
-  const [form, setForm] = useState({ username: "", password: "", role: "user" });
+  const [form, setForm] = useState({ username: "", password: "", role: "USER" });
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -45,8 +45,8 @@ const Signup = () => {
           onChange={handleChange}
           className="border p-2"
         >
-          <option value="user">User</option>
-          <option value="admin">Admin</option>
+          <option value="USER">User</option>
+          
         </select>
         <button className="bg-green-500 text-white px-4 py-2">
           Register

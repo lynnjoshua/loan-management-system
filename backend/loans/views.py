@@ -52,5 +52,3 @@ def echo(request):
     elif request.method == "POST":
         data = request.data
         return Response({"received": data})
-
-

@@ -2,16 +2,17 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="4d4be42f-2630-458a-ad2f-dd9251ef2929" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/loans/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/loans/serializers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loans/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/loans/urls.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/loans/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/loans/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/users/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/users/serializers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../frontend/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/App.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../frontend/src/index.css" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/index.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/db.sqlite3" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/components/AdminNavbar.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/components/AdminNavbar.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/components/Navbar.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/components/Navbar.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/components/Navbar.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/components/Navbar.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../frontend/src/pages/AdminDashboard.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/pages/AdminDashboard.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../frontend/tailwind.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/tailwind.config.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/pages/AdminLogin.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/pages/AdminLogin.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/pages/AuthPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/pages/AuthPage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/pages/Dashboard.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/pages/Dashboard.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../frontend/src/pages/Signup.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/../frontend/src/pages/Signup.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -21,9 +22,9 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 7
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 7
+}</component>
   <component name="ProjectId" id="32d30vpGizLcg8HJz7QDc4Tk3rj" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -32,7 +33,7 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "master"
+    "git-widget-placeholder": "dashboard-feature"
   }
 }]]></component>
   <component name="SharedIndexes">

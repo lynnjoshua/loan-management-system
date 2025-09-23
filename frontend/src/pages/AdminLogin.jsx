@@ -12,7 +12,7 @@ const AdminLogin = () => {
     e.preventDefault();
     try {
       const res = await API.post("/login/", { username, password });
-      if (res.data.role !== "ADM") {
+      if (res.data.role !== "ADMIN") {
         setError("Access denied. Admins only.");
         return;
       }

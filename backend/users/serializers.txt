@@ -126,3 +126,94 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
         return user
+
+-----------------------------------------
+
+from rest_framework import serializers
+from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth.password_validation import validate_password
+from .models import User
+
+User = get_user_model()
+
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, validators=[validate_password])
+    password_confirm = serializers.CharField(write_only=True, required=True)  # Add password confirmation
+
+    class Meta:
+        model = User
+        fields = ("id", "username", "email", "password", "password_confirm", "role")
+        extra_kwargs = {
+            "email": {"required": False},
+            "role": {"required": False},  # Make role optional
+        }
+
+    def validate(self, data):
+        # Check if passwords match
+        if data['password'] != data['password_confirm']:
+            raise serializers.ValidationError({"password": "Passwords do not match."})
+        
+        # Remove password_confirm from validated data as we don't need to save it
+        data.pop('password_confirm')
+        
+        # Check role permissions
+        request = self.context.get('request')
+        role = data.get('role', 'USER')
+        
+        # Only allow admins to create admin accounts
+        if role == "ADMIN":
+            if not request or not request.user.is_authenticated or request.user.role != "ADMIN":
+                raise serializers.ValidationError({"role": "Only admins can create admin accounts."})
+        
+        return data
+
+    def validate_role(self, value):
+        # Ensure role is valid
+        valid_roles = [choice[0] for choice in User.ROLE_CHOICES]
+        if value not in valid_roles:
+            raise serializers.ValidationError(f"Invalid role. Must be one of: {', '.join(valid_roles)}")
+        return value
+
+    def create(self, validated_data):
+        user = User.objects.create_user( 
+            username=validated_data["username"],
+            email=validated_data.get("email", ""),
+            password=validated_data["password"],
+            role=validated_data.get("role", "USER"),
+        )
+        return user
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Extend the default Token serializer to include username + role in the response.
+    """
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data["username"] = self.user.username
+        data["role"] = self.user.role
+        data["user_id"] = self.user.id
+        return data
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = get_user_model()
+        fields = ['id', 'username', 'email', 'role', 'date_joined', 'is_active']
+        read_only_fields = ['id', 'date_joined', 'is_active']  # These fields should not be editable
+
+
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'password', 'role')  # add/remove fields as needed
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        user = User(**validated_data)
+        user.set_password(password)
+        user.save()
+        return user

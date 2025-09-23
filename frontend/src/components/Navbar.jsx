@@ -12,11 +12,15 @@ function Navbar() {
 
   return (
     <nav className="bg-blue-600 text-white p-4 flex justify-between items-center">
-      <h1 className="text-xl font-bold">LoanFriend</h1>
+      <h1 className="text-xl font-bold">LoanFriend — Your Loan Management System</h1>
       <div className="space-x-4">
-        <Link to="/dashboard" className="hover:underline">Dashboard</Link>
-        <Link to="/loans" className="hover:underline">Loans</Link>
-        <Link to="/loans/new" className="hover:underline">New Loan</Link>
+        {token && (
+          <>
+            <Link to="/dashboard" className="hover:underline">Dashboard</Link>
+            <Link to="/loans" className="hover:underline">Loans</Link>
+            <Link to="/loans/new" className="hover:underline">New Loan</Link>
+          </>
+        )}
 
         {!token ? (
           <>

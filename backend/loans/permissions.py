@@ -7,6 +7,14 @@ class IsOwnerOrAdmin(BasePermission):
     - Admin users (is_staff=True) can manage all loans.
     """
 
+    def has_permission(self, request, view):
+        # Allow all users to create loans (object-level will handle ownership)
+        if request.method == 'POST':
+            return True
+            
+        # For other methods, require authentication
+        return request.user and request.user.is_authenticated
+
     def has_object_permission(self, request, view, obj):
         # Admins can do anything
         if request.user and request.user.is_staff:
@@ -16,5 +24,5 @@ class IsOwnerOrAdmin(BasePermission):
         if request.method in SAFE_METHODS:
             return obj.user == request.user
 
-        # For write actions (PUT, PATCH, DELETE)
+        # For write actions (PUT, PATCH, DELETE, POST to custom actions)
         return obj.user == request.user

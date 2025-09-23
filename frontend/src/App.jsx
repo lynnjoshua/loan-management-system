@@ -10,6 +10,9 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminLogin from "./pages/AdminLogin";
 import AdminNavBar from "./components/AdminNavBar";
 import AuthPage from "./pages/AuthPage";
+import AdminLoanlist from "./pages/AdminLoanlist";
+import AdminUsers from "./pages/AdminUsers";
+import AdminApprove from "./pages/AdminApprove";
 
 function App() {
   return (
@@ -39,6 +42,9 @@ function AppRoutes() {
           <Route path="/loans/new" element={<LoanForm />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/admin/loans" element={<AdminLoanlist />} />
+          <Route path="/admin/users" element={<AdminUsers />} />          
+          <Route path="/admin/approve" element={<AdminApprove />} />          
         </Routes>
       </div>
     </>

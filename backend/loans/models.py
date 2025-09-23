@@ -26,6 +26,18 @@ class Loan(models.Model):
     total_payable = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     total_interest = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     is_closed = models.BooleanField(default=False)
+    
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('APPROVED', 'Approved'),
+        ('ACTIVE', 'Active'),
+        ('FORECLOSED', 'Foreclosed'),
+        ('REJECTED', 'Rejected'),
+        ('REPAID','Repaid'),
+        ('DEFAULTED','Defaulted'),
+    )
+    
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING')
 
     def clean(self):
         """Extra validation hook if needed."""

@@ -20,14 +20,14 @@ const LoanForm = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-xl font-bold mb-4">New Loan</h1>
+      <h1 className="text-xl font-bold mb-4">Request a New Loan</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <input className="border p-2" name="amount" placeholder="Amount"
+        <input className="border p-2" name="amount" placeholder="Amount (from 1000 to 100,000)"
           value={form.amount} onChange={handleChange} />
-        <input className="border p-2" name="tenure" placeholder="Tenure (months)"
+        <input className="border p-2" name="tenure" placeholder="Tenure (from 3 to 24 months)"
           value={form.tenure} onChange={handleChange} />
-        <input className="border p-2" name="interest_rate" placeholder="Interest Rate %"
-          value={form.interest_rate} onChange={handleChange} />
+        {/* <input className="border p-2" name="interest_rate" placeholder="Interest Rate %"
+          value={form.interest_rate} onChange={handleChange} /> */}
         <button className="bg-blue-500 text-white px-4 py-2">Submit</button>
       </form>
 

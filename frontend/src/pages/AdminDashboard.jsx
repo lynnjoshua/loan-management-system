@@ -1,227 +1,313 @@
-import { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useMemo, useCallback, useRef } from "react";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
-import AdminNavbar from "../components/AdminNavBar";
+import { useNavigate } from "react-router-dom";
+import AlertBanner from "../components/AlertBanner";
+import AdminDashboardHeader from "../components/AdminDashboardHeader";
+import AdminStatsCards from "../components/AdminStatsCards";
+import TabNavigation from "../components/TabNavigation";
+import AdminLoansTable from "../components/AdminLoansTable";
+import AdminUsersTable from "../components/AdminUsersTable";
 
-const AdminDashboard = () => {
-  const { token, logout, user } = useContext(AuthContext);
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api";
+
+export default function AdminDashboard() {
+  const { token, role, isInitialized } = useContext(AuthContext);
+  const navigate = useNavigate();
+
   const [loans, setLoans] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState([]);
+  const [loadingLoans, setLoadingLoans] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [processingId, setProcessingId] = useState(null);
+  const [activeTab, setActiveTab] = useState("loans");
+  const [authChecked, setAuthChecked] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  // Axios instance with token
-  const api = axios.create({
-    baseURL: process.env.REACT_APP_API_URL || "http://127.0.0.1:8000/api",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  // Refs for cleanup
+  const successTimeoutRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
-  // Verify user is admin
-  useEffect(() => {
-    if (user && user.role !== "ADMIN") {
-      setError("Access denied. Admin privileges required.");
-      setLoading(false);
-    }
-  }, [user]);
+  // small helper: ensure we treat role case-insensitively
+  const isAdmin = role && String(role).toUpperCase() === "ADMIN";
 
-  // Fetch all loans
-  const fetchLoans = async () => {
+  // create a simple axios instance per call (explicit headers) — easier to debug
+  const makeAuthHeaders = () => {
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  // fetch users (admins usually need to see user details)
+  const fetchUsers = useCallback(async () => {
+    setLoadingUsers(true);
+    setError("");
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
-      setLoading(true);
-      setError("");
-      const res = await api.get("/loans/");
-      setLoans(res.data);
+      const res = await axios.get(`${BASE_URL}/auth/users/`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal: controller.signal,
+      });
+      setUsers(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error("❌ Loans API error:", err.response || err.message);
-      setError("Failed to fetch loans.");
-      if (err.response?.status === 403) {
-        setError("Access denied. Admin privileges required.");
+      if (axios.isCancel(err)) return;
+      console.error("fetchUsers error:", err?.response ?? err?.message ?? err);
+      setError("Failed to load users. Check console for details.");
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, [token]);
+
+  // fetch loans
+  const fetchLoans = useCallback(async () => {
+    setLoadingLoans(true);
+    setError("");
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    try {
+      const res = await axios.get(`${BASE_URL}/loans/`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal: controller.signal,
+      });
+      setLoans(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      if (axios.isCancel(err)) return;
+      console.error("fetchLoans error:", err?.response ?? err?.message ?? err);
+      const serverMsg = err?.response?.data?.detail || err?.response?.data?.error;
+      setError(serverMsg || "Failed to load loans. Check console for details.");
+    } finally {
+      setLoadingLoans(false);
+    }
+  }, [token]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  // load data when we have a token
+  useEffect(() => {
+    // Wait for AuthContext to initialize before checking auth
+    if (!isInitialized) {
+      return;
+    }
+
+    if (!token) {
+      setAuthChecked(true);
+      navigate("/admin-login");
+      return;
+    }
+
+    setAuthChecked(true);
+    // call both; it's okay if user isn't loaded yet
+    fetchUsers();
+    fetchLoans();
+  }, [token, isInitialized, navigate, fetchUsers, fetchLoans]);
+
+  // build a map of users by id for quick lookup (handles case where loan.user is id)
+  const usersMap = useMemo(() => {
+    const map = new Map();
+    users.forEach((u) => {
+      map.set(u.id, u);
+    });
+    return map;
+  }, [users]);
+
+  // format currency helper
+  const formatCurrency = (value) =>
+    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
+
+  const normalizedStatus = (s) => (typeof s === "string" ? s.toLowerCase() : "");
+
+  // Calculate stats (must run before conditional returns to maintain hook order)
+  const totalLoans = loans.length;
+  const activeLoans = loans.filter((l) => normalizedStatus(l.status) === "approved").length;
+  const foreclosedLoans = loans.filter((l) => normalizedStatus(l.status) === "foreclosed").length;
+  const pendingLoans = loans.filter((l) => normalizedStatus(l.status) === "pending").length;
+
+  // Filter loans based on selected status (useMemo must always run in same order)
+  const filteredLoans = useMemo(() => {
+    if (statusFilter === "all") return loans;
+    if (statusFilter === "approved") return loans.filter((l) => normalizedStatus(l.status) === "approved");
+    if (statusFilter === "foreclosed") return loans.filter((l) => normalizedStatus(l.status) === "foreclosed");
+    if (statusFilter === "pending") return loans.filter((l) => normalizedStatus(l.status) === "pending");
+    return loans;
+  }, [loans, statusFilter]);
+
+  // Handler functions
+  const handleRefresh = () => {
+    fetchLoans();
+    fetchUsers();
+  };
+
+  const handleFilterChange = (filter) => {
+    setStatusFilter(filter);
+  };
+
+  // Basic action handlers (delete / foreclose / approve). Simplified and explicit.
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this loan? Note: Loans with payment history cannot be deleted.")) return;
+    setProcessingId(id);
+    setError("");
+    setSuccess("");
+
+    try {
+      await axios.delete(`${BASE_URL}/loans/${id}/delete/`, { headers: makeAuthHeaders() });
+      setLoans((l) => l.filter((x) => x.id !== id));
+      setSuccess("Loan deleted successfully.");
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = setTimeout(() => setSuccess(""), 2500);
+    } catch (err) {
+      console.error("delete error:", err);
+      // Get detailed error message from server
+      const errorMsg = err?.response?.data?.error || err?.response?.data?.detail || "Failed to delete loan.";
+      const statusCode = err?.response?.status;
+
+      if (statusCode === 403) {
+        setError("Access denied. Admin permissions required to delete loans.");
+      } else if (statusCode === 400) {
+        setError(errorMsg);
+      } else {
+        setError(errorMsg);
       }
     } finally {
-      setLoading(false);
+      setProcessingId(null);
     }
   };
 
-  // Delete loan with confirmation
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this loan?")) {
-      return;
-    }
-    
-    try {
-      await api.delete(`/loans/${id}/`);
-      setLoans(loans.filter((loan) => loan.id !== id));
-      setSuccess("Loan deleted successfully.");
-      setTimeout(() => setSuccess(""), 3000);
-    } catch (err) {
-      alert("Failed to delete loan.");
-    }
-  };
-
-  // Foreclose loan with confirmation
   const handleForeclose = async (id) => {
-    if (!window.confirm("Are you sure you want to foreclose this loan?")) {
-      return;
-    }
-    
+    if (!window.confirm("Foreclose this loan?")) return;
+    setProcessingId(id);
+    setError("");
+    setSuccess("");
+
     try {
-      await api.post(`/loans/${id}/foreclose/`);
-      setLoans(
-        loans.map((loan) =>
-          loan.id === id ? { ...loan, status: "Foreclosed" } : loan
-        )
-      );
+      await axios.post(`${BASE_URL}/loans/${id}/foreclose/`, {}, { headers: makeAuthHeaders() });
+      setLoans((ls) => ls.map((x) => (x.id === id ? { ...x, status: "Foreclosed" } : x)));
       setSuccess("Loan foreclosed successfully.");
-      setTimeout(() => setSuccess(""), 3000);
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = setTimeout(() => setSuccess(""), 2500);
     } catch (err) {
-      alert("Failed to foreclose loan.");
+      console.error("foreclose error:", err);
+      const errorMsg = err?.response?.data?.error || err?.response?.data?.detail || "Failed to foreclose loan.";
+      setError(errorMsg);
+    } finally {
+      setProcessingId(null);
     }
   };
 
-  useEffect(() => {
-    if (user && user.role === "ADMIN") {
-      fetchLoans();
-    }
-  }, [user]);
+  const handleApprove = async (id) => {
+    if (!window.confirm("Approve this loan?")) return;
+    setProcessingId(id);
+    setError("");
+    setSuccess("");
 
-  if (user && user.role !== "ADMIN") {
+    try {
+      await axios.post(`${BASE_URL}/loans/${id}/approve/`, {}, { headers: makeAuthHeaders() });
+      setLoans((ls) => ls.map((x) => (x.id === id ? { ...x, status: "Approved" } : x)));
+      setSuccess("Loan approved successfully.");
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = setTimeout(() => setSuccess(""), 2500);
+    } catch (err) {
+      console.error("approve error:", err);
+      const errorMsg = err?.response?.data?.error || err?.response?.data?.detail || "Failed to approve loan.";
+      setError(errorMsg);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  // helper to display loan's user info whether loan.user is an object, id, or string
+  const displayLoanUser = (loan) => {
+    const u = loan.user;
+    if (!u) return "N/A";
+    if (typeof u === "object") return u.username || u.email || u.id || "N/A";
+    if (typeof u === "number") {
+      const found = usersMap.get(u);
+      return found ? found.username || found.email : `User #${u}`;
+    }
+    // string case (email or username)
+    return String(u);
+  };
+
+  // Show loading state while checking auth
+  if (!authChecked || !isInitialized) {
     return (
-      <div className="min-h-screen bg-green-50 text-green-900 p-6">
-        <div className="bg-red-100 p-4 rounded-md text-red-700">
-          {error || "You do not have permission to access this page."}
+      <div className="min-h-screen p-6 bg-green-50 text-green-900 flex items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  // if token exists and is not admin → show access denied
+  if (token && !isAdmin) {
+    return (
+      <div className="min-h-screen p-6 bg-green-50 text-green-900">
+        <div className="bg-red-100 p-4 rounded text-red-700">
+          Access denied — admin role required.
         </div>
       </div>
     );
   }
 
-  // Stats
-  const totalLoans = loans.length;
-  const activeLoans = loans.filter((l) => l.status === "Active").length;
-  const foreclosedLoans = loans.filter((l) => l.status === "Foreclosed").length;
+  const tabs = [
+    { id: "loans", label: "Manage Loans" },
+    
+  ];
 
   return (
     <div className="min-h-screen bg-green-50 text-green-900">
-      <AdminNavbar />
-      
-      {/* Success Message */}
-      {success && (
-        <div className="bg-green-100 p-4 text-green-700 text-center">
-          {success}
+      <AlertBanner type="success" message={success} />
+      <AlertBanner type="error" message={error} />
+
+      <AdminDashboardHeader />
+
+      <AdminStatsCards
+        totalLoans={totalLoans}
+        activeLoans={activeLoans}
+        foreclosedLoans={foreclosedLoans}
+        pendingLoans={pendingLoans}
+        onRefresh={handleRefresh}
+        isRefreshing={loadingLoans || loadingUsers}
+        activeFilter={statusFilter}
+        onFilterChange={handleFilterChange}
+      />
+
+      <TabNavigation tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {activeTab === "loans" && (
+        <div className="p-6">
+          <h2 className="text-xl font-bold mb-4">Manage Loans</h2>
+          <AdminLoansTable
+            loans={filteredLoans}
+            isLoading={loadingLoans}
+            processingId={processingId}
+            onDelete={handleDelete}
+            onForeclose={handleForeclose}
+            onApprove={handleApprove}
+            formatCurrency={formatCurrency}
+            displayLoanUser={displayLoanUser}
+            normalizedStatus={normalizedStatus}
+          />
         </div>
       )}
-      
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-100 p-4 text-red-700 text-center">
-          {error}
+
+      {activeTab === "users" && (
+        <div className="p-6">
+          <h2 className="text-xl font-bold mb-4">Manage Users</h2>
+          <AdminUsersTable users={users} isLoading={loadingUsers} />
         </div>
       )}
-
-      {/* Header */}
-      <div className="p-6 bg-green-600 text-white">
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <p>Manage all loans in the system</p>
-      </div>
-
-      {/* Stats */}
-      <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-4 bg-green-100 rounded-xl shadow">
-          <h2 className="text-lg font-semibold">Total Loans</h2>
-          <p className="text-2xl">{totalLoans}</p>
-        </div>
-        <div className="p-4 bg-green-100 rounded-xl shadow">
-          <h2 className="text-lg font-semibold">Active Loans</h2>
-          <p className="text-2xl">{activeLoans}</p>
-        </div>
-        <div className="p-4 bg-green-100 rounded-xl shadow">
-          <h2 className="text-lg font-semibold">Foreclosed Loans</h2>
-          <p className="text-2xl">{foreclosedLoans}</p>
-        </div>
-        <div className="p-4 bg-green-100 rounded-xl shadow flex items-center justify-center">
-          <button 
-            onClick={fetchLoans}
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-          >
-            Refresh Data
-          </button>
-        </div>
-      </div>
-
-      {/* Loan Table */}
-      <div className="p-6">
-        <h2 className="text-xl font-bold mb-4">Manage Loans</h2>
-        {loading ? (
-          <p>Loading loans...</p>
-        ) : error ? (
-          <p className="text-red-500">{error}</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full border border-green-300 bg-white shadow-md rounded-lg">
-              <thead className="bg-green-200">
-                <tr>
-                  <th className="px-4 py-2 border">Loan ID</th>
-                  <th className="px-4 py-2 border">User</th>
-                  <th className="px-4 py-2 border">Amount</th>
-                  <th className="px-4 py-2 border">Tenure</th>
-                  <th className="px-4 py-2 border">Interest Rate</th>
-                  <th className="px-4 py-2 border">Status</th>
-                  <th className="px-4 py-2 border">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loans.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" className="px-4 py-2 border text-center">
-                      No loans found
-                    </td>
-                  </tr>
-                ) : (
-                  loans.map((loan) => (
-                    <tr key={loan.id} className="text-center">
-                      <td className="px-4 py-2 border">{loan.id}</td>
-                      <td className="px-4 py-2 border">
-                        {loan.user?.username || loan.user?.email || loan.user || "N/A"}
-                      </td>
-                      <td className="px-4 py-2 border">₹{loan.amount}</td>
-                      <td className="px-4 py-2 border">{loan.tenure} months</td>
-                      <td className="px-4 py-2 border">{loan.interest_rate}%</td>
-                      <td className="px-4 py-2 border">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          loan.status === "Active" 
-                            ? "bg-green-100 text-green-800" 
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}>
-                          {loan.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 border space-x-2">
-                        <button
-                          onClick={() => handleDelete(loan.id)}
-                          className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                        >
-                          Delete
-                        </button>
-                        {loan.status === "Active" && (
-                          <button
-                            onClick={() => handleForeclose(loan.id)}
-                            className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
-                          >
-                            Foreclose
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
     </div>
   );
-};
-
-export default AdminDashboard;
+}

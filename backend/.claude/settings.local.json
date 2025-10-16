@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Read(//d/A_YUAI/1/loan-management-system/frontend/src/**)"
-    ],
-    "deny": [],
-    "ask": []
-  }
-}

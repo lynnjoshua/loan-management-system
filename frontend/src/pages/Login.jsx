@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 import API from "../api/axios";
 
-const AuthPage = () => {
+const Login = () => {
   const [isSignup, setIsSignup] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -12,6 +13,7 @@ const AuthPage = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,31 +34,21 @@ const AuthPage = () => {
     try {
       let res;
       if (isSignup) {
-        res = await API.post("/signup/", { username, password, role });
+        res = await API.post("/auth/register/", { username, password, role });
         alert("Signup successful — please login.");
         setIsSignup(false);
         setPassword("");
         setConfirmPassword("");
       } else {
-        res = await API.post("/login/", { username, password });
+        // Use AuthContext login function to handle authentication
+        res = await authLogin(username, password);
 
-        const { access, refresh, role: returnedRole, username: returnedUsername } = res.data;
-
-        if (!access) {
-          throw new Error("No access token returned from server.");
-        }
-
-        localStorage.setItem("token", access);
-        if (refresh) localStorage.setItem("refresh", refresh);
-        if (returnedRole) localStorage.setItem("role", returnedRole);
-        if (returnedUsername) localStorage.setItem("username", returnedUsername);
-
-        API.defaults.headers.common["Authorization"] = `Bearer ${access}`;
+        const { role: returnedRole } = res.data;
 
         if (returnedRole === "admin") {
           navigate("/admin");
         } else {
-          navigate("/loans/new");
+          navigate("/dashboard");
         }
       }
     } catch (err) {
@@ -173,4 +165,4 @@ const AuthPage = () => {
   );
 };
 
-export default AuthPage;
+export default Login;

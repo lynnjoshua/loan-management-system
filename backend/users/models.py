@@ -45,10 +45,11 @@ class UserProfile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # Profile approval status
+    # Profile status
     STATUS_CHOICES = (
         ('PENDING', 'Admin Approval Pending'),
         ('APPROVED', 'Approved'),
+        ('SUSPENDED', 'Suspended')
     )
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING')
 

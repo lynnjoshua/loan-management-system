@@ -24,7 +24,7 @@ function AdminLoanlist() {
               <th className="border px-4 py-2">Total Payable</th>
               <th className="border px-4 py-2">Total Interest</th>
               <th className="border px-4 py-2">Status</th>
-              <th className="border px-4 py-2">Closed?</th>
+              
             </tr>
           </thead>
           <tbody>
@@ -41,9 +41,7 @@ function AdminLoanlist() {
                   <td className="border px-4 py-2">{loan.total_payable || "-"}</td>
                   <td className="border px-4 py-2">{loan.total_interest || "-"}</td>
                   <td className="border px-4 py-2">{loan.status}</td>
-                  <td className="border px-4 py-2">
-                    {loan.is_closed ? "✅" : "❌"}
-                  </td>
+                  
                 </tr>
               ))
             ) : (

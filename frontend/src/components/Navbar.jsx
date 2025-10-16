@@ -1,11 +1,12 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
 function Navbar() {
   const navigate = useNavigate();
-  const token = localStorage.getItem("token");
+  const { token, logout, isLoading } = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    logout();
     alert("Logged out successfully!");
     navigate("/login");
   };
@@ -16,13 +17,12 @@ function Navbar() {
       <div className="space-x-4">
         {token && (
           <>
-            <Link to="/dashboard" className="hover:underline">Dashboard</Link>
-            <Link to="/loans" className="hover:underline">Loans</Link>
-            <Link to="/loans/new" className="hover:underline">New Loan</Link>
           </>
         )}
 
-        {!token ? (
+        {isLoading ? (
+          <span className="text-sm opacity-75">Loading...</span>
+        ) : !token ? (
           <>
             <Link to="/login" className="hover:underline">Login</Link>
             <Link to="/signup" className="hover:underline">Signup</Link>

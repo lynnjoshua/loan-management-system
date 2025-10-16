@@ -1,28 +1,22 @@
-from rest_framework.permissions import BasePermission, SAFE_METHODS
+from rest_framework.permissions import BasePermission
 
-class IsOwnerOrAdmin(BasePermission):
+
+class IsAdminRole(BasePermission):
     """
-    Custom permission:
-    - Regular users can only manage their own loans.
-    - Admin users (is_staff=True) can manage all loans.
+    Custom permission to check if user has role='ADMIN'.
+
+    This is different from Django's IsAdminUser which checks is_staff.
+    Use this for endpoints that should be accessible only to users with role='ADMIN'.
     """
 
     def has_permission(self, request, view):
-        # Allow all users to create loans (object-level will handle ownership)
-        if request.method == 'POST':
-            return True
-            
-        # For other methods, require authentication
-        return request.user and request.user.is_authenticated
+        # Check if user is authenticated
+        if not request.user or not request.user.is_authenticated:
+            return False
 
-    def has_object_permission(self, request, view, obj):
-        # Admins can do anything
-        if request.user and request.user.is_staff:
+        # Check if user has ADMIN role (case-insensitive)
+        user_role = getattr(request.user, 'role', None)
+        if user_role and str(user_role).upper() == 'ADMIN':
             return True
 
-        # Safe methods (GET, HEAD, OPTIONS) allowed if owner
-        if request.method in SAFE_METHODS:
-            return obj.user == request.user
-
-        # For write actions (PUT, PATCH, DELETE, POST to custom actions)
-        return obj.user == request.user
+        return False

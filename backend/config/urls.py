@@ -1,18 +1,19 @@
 from django.contrib import admin
-from django.http import JsonResponse
 from django.urls import path, include
 
-def api_root(request):
-    return JsonResponse({"message": "API is working!"})
+from .views import api_root
+
 
 urlpatterns = [
+    # API root / health check
     path("api/", api_root),
 
+    # Django admin panel
     path("admin/", admin.site.urls),
 
-    # Auth + Users (custom JWT + register handled inside users/urls.py)
-    path("api/", include("users.urls")),
+    # Authentication & User Management
+    path("api/auth/", include("users.urls")),
 
-    # Loans
+    # Loan Management
     path("api/loans/", include("loans.urls")),
 ]

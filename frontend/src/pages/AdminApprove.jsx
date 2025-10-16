@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import API from "../api/axios";
 
 const AdminApprove = () => {
   const [pendingUsers, setPendingUsers] = useState([]);
@@ -9,12 +9,7 @@ const AdminApprove = () => {
     setLoading(true);
     try {
       // Get all users (admin endpoint) and filter by profile status
-      const token = localStorage.getItem("access_token");
-      const response = await axios.get("/api/users/", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = await API.get("/auth/users/");
       
       // Filter users with PENDING status in their profile
       const pending = response.data.filter(user => 
@@ -35,45 +30,18 @@ const AdminApprove = () => {
 
   const handleApprove = async (userId) => {
     if (!confirm("Approve this user? They will be able to login immediately.")) return;
-    
+
     try {
-      const token = localStorage.getItem("access_token");
-      
-      // Call the approve endpoint (you'll need to create this in Django)
-      await axios.patch(`/api/users/${userId}/approve/`, {}, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      
+      // Call the approve endpoint with POST method
+      await API.post(`/auth/users/${userId}/approve/`, {});
+
       // Refresh the list
       fetchPendingUsers();
       alert("User approved successfully!");
     } catch (error) {
       console.error("Approve failed", error);
-      alert("Approval failed. User might already be approved or you don't have permission.");
-    }
-  };
-
-  const handleReject = async (userId) => {
-    const reason = prompt("Enter reason for rejection:");
-    if (reason === null) return; // User cancelled
-    
-    try {
-      const token = localStorage.getItem("access_token");
-      await axios.patch(`/api/users/${userId}/reject/`, {
-        reason: reason
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      
-      fetchPendingUsers();
-      alert("User rejected.");
-    } catch (error) {
-      console.error("Reject failed", error);
-      alert("Rejection failed.");
+      const errorMsg = error?.response?.data?.detail || "Approval failed. User might already be approved or you don't have permission.";
+      alert(errorMsg);
     }
   };
 
@@ -109,12 +77,6 @@ const AdminApprove = () => {
                   className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                 >
                   Approve
-                </button>
-                <button
-                  onClick={() => handleReject(user.id)}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                >
-                  Reject
                 </button>
               </div>
             </div>

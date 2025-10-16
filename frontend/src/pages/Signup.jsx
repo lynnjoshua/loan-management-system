@@ -1,5 +1,5 @@
 import { useState, useContext } from "react";
-import { AuthContext } from "../context/AuthContext";
+import { AuthContext } from "../context/AuthContext"; 
 
 const Signup = () => {
   const { signup } = useContext(AuthContext);
@@ -84,6 +84,7 @@ const Signup = () => {
     const payload = {
       username: form.username,
       password: form.password,
+      password_confirm: form.confirmPassword, 
       role: form.role,
       email: form.email || null,
       profile: {
@@ -208,7 +209,7 @@ const Signup = () => {
               {errors.confirmPassword && <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>}
             </div>
 
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700">Role</label>
               <select
                 name="role"
@@ -218,9 +219,9 @@ const Signup = () => {
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
               >
                 <option value="USER">User</option>
-                {/* <option value="ADMIN">Admin</option> */}
+                <option value="ADMIN">Admin</option>
               </select>
-            </div>
+            </div> */}
           </div>
 
           {/* Profile fields (required except address_line_2) */}

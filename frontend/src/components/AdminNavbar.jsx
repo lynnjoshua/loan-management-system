@@ -1,5 +1,4 @@
-// AdminNavbar.jsx
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext"; // adjust path if your project layout differs
@@ -9,7 +8,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 
 export default function AdminNavbar() {
   const navigate = useNavigate();
-  const { token, role, username, logout } = useContext(AuthContext) || {};
+  const { token, role, username, logout, isLoading } = useContext(AuthContext) || {};
 
   // local profile state (we don't try to write back into AuthContext)
   const [profile, setProfile] = useState(null);
@@ -18,7 +17,7 @@ export default function AdminNavbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   // prepare auth headers for requests
-  const makeAuthHeaders = () => (token ? { Authorization: `Bearer ${token}` } : {});
+  const makeAuthHeaders = useCallback(() => (token ? { Authorization: `Bearer ${token}` } : {}), [token]);
 
   // fetch full profile from backend (endpoint: GET /users/me/)
   const fetchProfile = useCallback(async () => {
@@ -46,7 +45,7 @@ export default function AdminNavbar() {
     } finally {
       setLoadingProfile(false);
     }
-  }, [token]);
+  }, [token, makeAuthHeaders]);
 
   // If we have a token but no username or profile, fetch it on mount
   useEffect(() => {
@@ -56,7 +55,7 @@ export default function AdminNavbar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // robust logout: call context logout if available, clear localStorage as extra safety, navigate to login
+  // robust logout: call context logout if available, clear localStorage as extra safety, navigate to admin login
   const handleLogout = useCallback(() => {
     try {
       if (typeof logout === "function") logout();
@@ -73,41 +72,49 @@ export default function AdminNavbar() {
       console.warn("Could not remove items from localStorage:", err);
     }
 
-    // navigate to login (adjust route if your app uses a different route)
-    navigate("/login");
+    // navigate to admin login page
+    navigate("/admin-login");
   }, [logout, navigate]);
 
-  // small helper to show initials for avatar fallback
-  const initials = () => {
-    const name = (profile && (profile.username || profile.email)) || username || "Admin";
-    return name
+  // Memoized display values to prevent recalculation on every render
+  const displayValues = useMemo(() => {
+    const name = profile?.username || username || profile?.email || "Admin";
+    const displayRole = profile?.role || role || "—";
+    const initials = name
       .split(" ")
       .map((p) => p[0])
       .join("")
       .slice(0, 2)
       .toUpperCase();
-  };
 
-  // display values preferring profile (fetched), then context values
-  const displayName = () => {
-    if (profile?.username) return profile.username;
-    if (username) return username;
-    if (profile?.email) return profile.email;
-    return "Admin";
-  };
+    return {
+      name,
+      role: displayRole,
+      initials,
+      email: profile?.email || "No email available"
+    };
+  }, [profile, username, role]);
 
-  const displayRole = () => {
-    if (profile?.role) return profile.role;
-    if (role) return role;
-    return "—";
-  };
+  // Don't render navbar until auth is initialized
+  if (isLoading) {
+    return (
+      <header className="bg-green-600 text-white">
+        <div className="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <span className="text-xl font-bold">Loan Management Admin</span>
+          </div>
+          <div className="text-sm opacity-75">Loading...</div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="bg-green-600 text-white">
       <div className="max-w-screen-xl mx-auto px-4 py-3 flex items-center justify-between">
         {/* Brand */}
         <div className="flex items-center space-x-4">
-          <Link to="/" className="text-xl font-bold flex items-center space-x-2">
+          <Link to="/admin" className="text-xl font-bold flex items-center space-x-2">
             <span className="inline-block w-8 h-8 rounded-full bg-white text-green-700 flex items-center justify-center font-bold">L</span>
             <span>Loan Management Admin</span>
           </Link>
@@ -128,20 +135,20 @@ export default function AdminNavbar() {
               className="flex items-center space-x-2 px-3 py-1 rounded hover:bg-green-700"
             >
               <div className="w-8 h-8 rounded-full bg-white text-green-700 flex items-center justify-center font-semibold">
-                {initials()}
+                {displayValues.initials}
               </div>
               <div className="hidden sm:block text-left">
-                <div className="text-sm font-medium leading-none">{displayName()}</div>
-                <div className="text-xs opacity-80">{displayRole()}</div>
+                <div className="text-sm font-medium leading-none">{displayValues.name}</div>
+                <div className="text-xs opacity-80">{displayValues.role}</div>
               </div>
             </button>
 
             {menuOpen && (
               <div className="absolute right-0 mt-2 w-64 bg-white text-green-900 rounded shadow-lg z-40">
                 <div className="p-3 border-b">
-                  <div className="font-semibold">{displayName()}</div>
-                  <div className="text-sm text-gray-600">{profile?.email || "No email available"}</div>
-                  <div className="text-xs mt-1">Role: {displayRole()}</div>
+                  <div className="font-semibold">{displayValues.name}</div>
+                  <div className="text-sm text-gray-600">{displayValues.email}</div>
+                  <div className="text-xs mt-1">Role: {displayValues.role}</div>
                 </div>
 
                 <div className="p-2">

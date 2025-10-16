@@ -1,15 +1,15 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
-from .models import User, UserProfile
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .models import UserProfile
 
 User = get_user_model()
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    """Handles nested profile fields inside registration"""
+    """Nested serializer for the user's profile data."""
     class Meta:
         model = UserProfile
         fields = (
@@ -24,105 +24,70 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "date_of_birth",
             "pan_number",
             "aadhaar_number",
+            "full_address",
+            "status",
         )
+        read_only_fields = ["full_address", "status"]
 
 
 class RegisterSerializer(serializers.ModelSerializer):
+    """
+    Simple registration serializer:
+    - accepts password + password_confirm
+    - accepts nested profile data
+    - creates the User (inactive) and the UserProfile (status='PENDING')
+    """
     password = serializers.CharField(write_only=True, validators=[validate_password])
-    password_confirm = serializers.CharField(write_only=True, required=True)
-    profile = UserProfileSerializer(required=True)  # Expect a nested profile object
+    password_confirm = serializers.CharField(write_only=True)
+    profile = UserProfileSerializer(required=True)
 
     class Meta:
         model = User
-        fields = (
-            "id",
-            "username",
-            "email",
-            "password",
-            "password_confirm",
-            "role",
-            "profile",
-        )
-        extra_kwargs = {
-            "email": {"required": True},
-            "role": {"required": False},  # Default to USER
-        }
+        fields = ("id", "username", "email", "password", "password_confirm", "profile")
+        extra_kwargs = {"email": {"required": True}}
 
     def validate(self, data):
-        # Password confirmation
+        # Ensure passwords match
         if data["password"] != data["password_confirm"]:
             raise serializers.ValidationError({"password": "Passwords do not match."})
-
+        # remove password_confirm so it's not used in create()
         data.pop("password_confirm")
-
-        # Role restrictions
-        request = self.context.get("request")
-        role = data.get("role", "USER")
-        if role == "ADMIN":
-            if not request or not request.user.is_authenticated or request.user.role != "ADMIN":
-                raise serializers.ValidationError(
-                    {"role": "Only admins can create admin accounts."}
-                )
-
         return data
-
-    def validate_role(self, value):
-        valid_roles = [choice[0] for choice in User.ROLE_CHOICES]
-        if value not in valid_roles:
-            raise serializers.ValidationError(
-                f"Invalid role. Must be one of: {', '.join(valid_roles)}"
-            )
-        return value
 
     @transaction.atomic
     def create(self, validated_data):
         profile_data = validated_data.pop("profile", {})
         password = validated_data.pop("password")
 
-        # Create user (inactive until admin approves)
+        # Create user but keep inactive until approved by an admin
         user = User(
             username=validated_data["username"],
             email=validated_data.get("email", ""),
-            role=validated_data.get("role", "USER"),
         )
         user.set_password(password)
-        user.is_active = False  # Block login until admin approval
+        user.is_active = False  # block login until admin approves
         user.save()
 
-        # Create linked profile with status PENDING
+        # Create related profile with status "PENDING"
         UserProfile.objects.create(user=user, status="PENDING", **profile_data)
 
         return user
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """Extend JWT serializer to include username + role in response"""
+    """Add small extra info to the login response (username, role, id)."""
     def validate(self, attrs):
         data = super().validate(attrs)
         data["username"] = self.user.username
-        data["role"] = self.user.role
+        # include role if your User model has it; safe to use getattr
+        data["role"] = getattr(self.user, "role", None)
         data["user_id"] = self.user.id
         return data
 
 
 class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = get_user_model()
-        fields = ["id", "username", "email", "role", "date_joined", "is_active"]
-        read_only_fields = ["id", "date_joined", "is_active"]
-
-
-class UserRegistrationSerializer(serializers.ModelSerializer):
-    """(Optional) older simple serializer — can remove if unused"""
-    password = serializers.CharField(write_only=True)
-
+    """Small read-only user summary for lists/details."""
     class Meta:
         model = User
-        fields = ("id", "username", "email", "password", "role")
-
-    def create(self, validated_data):
-        password = validated_data.pop("password")
-        user = User(**validated_data)
-        user.set_password(password)
-        user.save()
-        return user
+        fields = ["id", "username", "email", "date_joined", "is_active", "role"]
+        read_only_fields = ["id", "date_joined", "is_active"]

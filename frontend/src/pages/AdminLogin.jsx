@@ -1,29 +1,36 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";   //  import useNavigate
-import API from "../api/axios";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
 const AdminLogin = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const navigate = useNavigate();   // create navigate function
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
+
     try {
-      const res = await API.post("/login/", { username, password });
+      // Use AuthContext login to properly update state
+      const res = await authLogin(username, password);
+
       if (res.data.role !== "ADMIN") {
         setError("Access denied. Admins only.");
         return;
       }
-      localStorage.setItem("token", res.data.access);
-      localStorage.setItem("role", res.data.role);
-      localStorage.setItem("username", res.data.username);
+
       alert("Admin login successful!");
-      navigate("/admin");   // redirect using React Router
+      navigate("/admin");
     } catch (err) {
       setError("Invalid credentials or login failed.");
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -45,8 +52,12 @@ const AdminLogin = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <button className="bg-green-500 text-white px-4 py-2">
-          Login
+        <button
+          type="submit"
+          disabled={loading}
+          className="bg-green-500 text-white px-4 py-2 disabled:opacity-50"
+        >
+          {loading ? "Logging in..." : "Login"}
         </button>
       </form>
       {error && <p className="text-red-500 mt-2">{error}</p>}
